@@ -142,11 +142,8 @@ function displayCountryDetails(selectedCountry) {
 
 // --- 6. RENDER HOTEL BLOCKS ---
 function renderHotelBlocks(selectedCountry) {
-    hotelBlocksContainer.innerHTML = '';
-    // Reset hotel selection when a new country is selected
-    currentHotelPrice = 0;
-    selectedHotelName = '';
-    selectedPriceInput.value = 0;
+
+    hotelBlocksContainer.innerHTML = ""; // 🟢 Purane hotels clear ho jayenge
 
     travelData[selectedCountry].hotels.forEach(hotel => {
         const block = document.createElement('div');
@@ -155,16 +152,17 @@ function renderHotelBlocks(selectedCountry) {
             <h3>${hotel.name}</h3>
             <p><strong>$${hotel.price.toFixed(2)}</strong> / night / traveler</p>
             <button class="select-btn">Select Hotel</button>
-            <button class="deselect-btn" style="margin-top:5px;display:none;">Remove Selection</button>
+            <button class="remove-hotel-selection-btn" style="margin-top:5px;display:none;">Remove Selection</button>
         `;
+
         const selectBtn = block.querySelector('.select-btn');
-        const deselectBtn = block.querySelector('.deselect-btn');
+        const deselectBtn = block.querySelector('.remove-hotel-selection-btn'); 
 
         selectBtn.addEventListener('click', (e) => {
             e.preventDefault();
             document.querySelectorAll('.hotel-block').forEach(b => {
                 b.classList.remove('selected');
-                b.querySelector('.deselect-btn').style.display = 'none';
+                b.querySelector('.remove-hotel-selection-btn').style.display = 'none';
             });
             block.classList.add('selected');
             deselectBtn.style.display = 'block';
@@ -188,28 +186,25 @@ function renderHotelBlocks(selectedCountry) {
     });
 }
 
-// --- 7. CALCULATE PRICE (FIXED: Fee Display added, logic confirmed) ---
+
+// --- 7. CALCULATE PRICE
 function calculatePrice() {
     const numTravelers = parseInt(travelersInput.value) || 1;
     const numNights = parseInt(nightsInput.value) || 1;
     const selectedCountry = countrySelect.value;
     
+    // 1. Calculate Hotel Cost: Only if a specific hotel is selected
+    // currentHotelPrice is the price per night per traveler.
     let totalHotelCost = 0;
-    let defaultTourCost = 0;
-    
-    // 1. Calculate Hotel/Tour Cost
     if (currentHotelPrice > 0) {
-        // Option A: Specific Hotel Selected
         totalHotelCost = currentHotelPrice * numTravelers * numNights;
-    } else {
-        // Option B: No Hotel Selected, use Default Tour Package Price (One-time cost)
-        const tourRate = tourPrices[selectedCountry] || 0;
-        // NOTE: Based on your original logic (cost is per traveler, not per night), I am assuming the tour price is a one-time charge, but the logic in the report (line 217) suggests it should be multiplied by nights.
-        // Let's stick to the structure that makes the most sense for a "per night" booking logic:
-        defaultTourCost = (tourPrices[selectedCountry] || 0) * numTravelers * numNights; 
-        
-        // If the original intention was a ONE-TIME tour price:
-        // defaultTourCost = (tourPrices[selectedCountry] || 0) * numTravelers;
+    } 
+    
+    // 2. Calculate Default Tour Cost: This is a ONE-TIME FIXED COST per traveler.
+    let defaultTourCost = 0;
+    if (currentHotelPrice === 0) {
+        // If NO specific hotel is selected, the tour price acts as the default package price.
+        defaultTourCost = (tourPrices[selectedCountry] || 0) * numTravelers;
     }
     
     // 3. Calculate Total Country Fee: Mandatory Fee per traveler * Travelers (always applied)
@@ -257,13 +252,13 @@ function goToPayment() {
     calculatePrice(); // Final calculation refresh
 
     // Determine values for the final report
-    const rateUsed = currentHotelPrice > 0 ? currentHotelPrice : (tourPrices[selectedCountry] || 0);
+    const rateUsed = currentHotelPrice || tourPrices[selectedCountry] || 0;
     const hotelTourCost = rateUsed * travelers * nights;
     const totalCountryFee = currentCountryFee * travelers;
     
     let accommodationName = selectedHotelName;
     if (!accommodationName) {
-           accommodationName = `${selectedCountry} (Default Tour Rate)`;
+         accommodationName = `${selectedCountry} (Default Tour Rate)`;
     }
 
     reportDetails.innerHTML = `
@@ -319,23 +314,14 @@ function processPayment(event) {
     });
 }
 
-// --- 10. INITIALIZATION (CORRECTED) ---
+// --- 10. INITIALIZATION ---
 document.addEventListener('DOMContentLoaded', () => {
     populateCountries();
-    
-    // >> FIX: Set a default country selection and trigger the display/calculation logic <<
-    const defaultCountry = Object.keys(travelData)[0];
-    if (defaultCountry) {
-        countrySelect.value = defaultCountry;
-        // This call initializes the currentCountryFee, renders hotels, and calls calculatePrice()
-        displayCountryDetails(defaultCountry); 
-    }
-
     // Attach event listeners to update price dynamically
     countrySelect.addEventListener('change', () => displayCountryDetails(countrySelect.value));
     nightsInput.addEventListener('input', calculatePrice); // Use 'input' for better responsiveness
     travelersInput.addEventListener('input', calculatePrice); // Use 'input' for better responsiveness
     
-    // Set default calculation on load (already covered by displayCountryDetails but kept for safety)
+    // Set default calculation on load
     calculatePrice(); 
 });
